@@ -10,17 +10,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   check-create-redwood-app:
     name: Check create redwood app
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Set up job
+        uses: ./.github/actions/set-up-job
         with:
-          node-version: 18
-      - run: yarn install
-        working-directory: ./.github/actions/check_create_redwood_app
+          set-up-yarn-cache: false
+          yarn-install-directory: ./.github/actions/check_create_redwood_app
+          build: false
 
       - name: Check create redwood app
         uses: ./.github/actions/check_create_redwood_app

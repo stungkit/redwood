@@ -2,23 +2,28 @@ import path from 'path'
 
 import { format } from 'prettier'
 
-import getRWPaths from './getRWPaths'
+import { getPaths } from '@redwoodjs/project-config'
 
-const getPrettierConfig = () => {
+const getPrettierConfig = async () => {
   try {
-    return require(path.join(getRWPaths().base, 'prettier.config.js'))
-  } catch (e) {
+    const { default: prettierConfig } = await import(
+      `file://${path.join(getPaths().base, 'prettier.config.js')}`
+    )
+    return prettierConfig
+  } catch {
     return undefined
   }
 }
 
-const prettify = (code: string, options: Record<string, any> = {}) =>
-  format(code, {
+const prettify = async (code: string, options: Record<string, any> = {}) => {
+  const prettierConfig = await getPrettierConfig()
+  return format(code, {
     singleQuote: true,
     semi: false,
-    ...getPrettierConfig(),
+    ...prettierConfig,
     parser: 'babel',
     ...options,
   })
+}
 
 export default prettify

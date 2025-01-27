@@ -2,10 +2,9 @@
   "compilerOptions": {
     "noEmit": true,
     "esModuleInterop": true,
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "baseUrl": "./",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "skipLibCheck": false,
     "rootDirs": [
       "./src",
@@ -33,16 +32,19 @@
     },
     "typeRoots": [
       "../node_modules/@types",
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "../node_modules/@testing-library"
     ],
     "types": [
       "jest",
-      "@testing-library/jest-dom"
+      "jest-dom"
     ],
     "jsx": "preserve"
   },
   "include": [
     "src",
+    "config",
+    ".storybook/**/*",
     "../.redwood/types/includes/all-*",
     "../.redwood/types/includes/web-*",
     "../types",

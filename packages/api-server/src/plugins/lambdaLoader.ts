@@ -1,11 +1,17 @@
 import path from 'path'
 
-import c from 'ansi-colors'
 import type { Handler } from 'aws-lambda'
-import { FastifyReply, FastifyRequest, RequestGenericInterface } from 'fastify'
-import escape from 'lodash.escape'
+import chalk from 'chalk'
+import fg from 'fast-glob'
+import type { Options as FastGlobOptions } from 'fast-glob'
+import type {
+  FastifyReply,
+  FastifyRequest,
+  RequestGenericInterface,
+} from 'fastify'
+import { escape } from 'lodash'
 
-import { findApiDistFunctions } from '@redwoodjs/internal/dist/files'
+import { getPaths } from '@redwoodjs/project-config'
 
 import { requestHandler } from '../requestHandlers/awsLambdaFastify'
 
@@ -16,49 +22,70 @@ export const LAMBDA_FUNCTIONS: Lambdas = {}
 
 export const setLambdaFunctions = async (foundFunctions: string[]) => {
   const tsImport = Date.now()
-  console.log(c.italic(c.dim('Importing Server Functions... ')))
+  console.log(chalk.dim.italic('Importing Server Functions... '))
 
-  const imports = foundFunctions.map((fnPath) => {
-    return new Promise((resolve) => {
-      const ts = Date.now()
-      const routeName = path.basename(fnPath).replace('.js', '')
+  const imports = foundFunctions.map(async (fnPath) => {
+    const ts = Date.now()
+    const routeName = path.basename(fnPath).replace('.js', '')
 
-      const { handler } = require(fnPath)
-      LAMBDA_FUNCTIONS[routeName] = handler
-      if (!handler) {
-        console.warn(
-          routeName,
-          'at',
-          fnPath,
-          'does not have a function called handler defined.'
-        )
-      }
-      // TODO: Use terminal link.
-      console.log(
-        c.magenta('/' + routeName),
-        c.italic(c.dim(Date.now() - ts + ' ms'))
+    const { handler } = await import(`file://${fnPath}`)
+    LAMBDA_FUNCTIONS[routeName] = handler
+    if (!handler) {
+      console.warn(
+        routeName,
+        'at',
+        fnPath,
+        'does not have a function called handler defined.',
       )
-      return resolve(true)
-    })
-  })
-
-  Promise.all(imports).then((_results) => {
+    }
+    // TODO: Use terminal link.
     console.log(
-      c.italic(c.dim('...Done importing in ' + (Date.now() - tsImport) + ' ms'))
+      chalk.magenta('/' + routeName),
+      chalk.dim.italic(Date.now() - ts + ' ms'),
     )
   })
+
+  await Promise.all(imports)
+
+  console.log(
+    chalk.dim.italic('...Done importing in ' + (Date.now() - tsImport) + ' ms'),
+  )
+}
+
+type LoadFunctionsFromDistOptions = {
+  fastGlobOptions?: FastGlobOptions
 }
 
 // TODO: Use v8 caching to load these crazy fast.
-export const loadFunctionsFromDist = async () => {
-  const serverFunctions = findApiDistFunctions()
+export const loadFunctionsFromDist = async (
+  options: LoadFunctionsFromDistOptions = {},
+) => {
+  const serverFunctions = findApiDistFunctions(
+    getPaths().api.base,
+    options?.fastGlobOptions,
+  )
+
   // Place `GraphQL` serverless function at the start.
-  const i = serverFunctions.findIndex((x) => x.indexOf('graphql') !== -1)
+  const i = serverFunctions.findIndex((x) => x.includes('graphql'))
   if (i >= 0) {
     const graphQLFn = serverFunctions.splice(i, 1)[0]
     serverFunctions.unshift(graphQLFn)
   }
   await setLambdaFunctions(serverFunctions)
+}
+
+// NOTE: Copied from @redwoodjs/internal/dist/files to avoid depending on @redwoodjs/internal.
+// import { findApiDistFunctions } from '@redwoodjs/internal/dist/files'
+function findApiDistFunctions(
+  cwd: string = getPaths().api.base,
+  options: FastGlobOptions = {},
+) {
+  return fg.sync('dist/functions/**/*.{ts,js}', {
+    cwd,
+    deep: 2, // We don't support deeply nested api functions, to maximise compatibility with deployment providers
+    absolute: true,
+    ...options,
+  })
 }
 
 interface LambdaHandlerRequest extends RequestGenericInterface {
@@ -74,7 +101,7 @@ interface LambdaHandlerRequest extends RequestGenericInterface {
  **/
 export const lambdaRequestHandler = async (
   req: FastifyRequest<LambdaHandlerRequest>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) => {
   const { routeName } = req.params
 

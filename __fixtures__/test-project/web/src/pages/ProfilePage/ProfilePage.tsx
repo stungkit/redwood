@@ -1,7 +1,7 @@
-import { Link, routes } from '@redwoodjs/router'
-import { MetaTags } from '@redwoodjs/web'
+import { Metadata } from '@redwoodjs/web'
 
 import { useAuth } from 'src/auth'
+// import { Link, routes } from '@redwoodjs/router'
 
 const ProfilePage = () => {
   const { currentUser, isAuthenticated, hasRole, loading } = useAuth()
@@ -12,7 +12,7 @@ const ProfilePage = () => {
 
   return (
     <>
-      <MetaTags title="Profile" description="Profile page" />
+      <Metadata title="Profile" description="Profile page" og />
 
       <h1 className="text-2xl">Profile</h1>
 

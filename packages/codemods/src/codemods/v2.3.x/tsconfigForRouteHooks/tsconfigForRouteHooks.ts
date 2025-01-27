@@ -1,4 +1,5 @@
-import getRWPaths from '../../../lib/getRWPaths'
+import { getPaths } from '@redwoodjs/project-config'
+
 import prettify from '../../../lib/prettify'
 
 export default async function addApiAliasToTsConfig() {
@@ -6,13 +7,13 @@ export default async function addApiAliasToTsConfig() {
   const ts = await import('typescript')
 
   const webConfigPath = ts.findConfigFile(
-    getRWPaths().web.base,
-    ts.sys.fileExists
+    getPaths().web.base,
+    ts.sys.fileExists,
   )
 
   if (!webConfigPath) {
     throw new Error(
-      'Could not find tsconfig.json in your web side. Please follow release notes to update your config manually.'
+      'Could not find tsconfig.json in your web side. Please follow release notes to update your config manually.',
     )
   }
 
@@ -20,10 +21,10 @@ export default async function addApiAliasToTsConfig() {
   // Also why I'm not using jscodeshift here - sadly I can't preserve the comments
   const { config: webConfig } = ts.parseConfigFileTextToJson(
     webConfigPath,
-    ts.sys.readFile(webConfigPath) as string // If file exists, it has contents
+    ts.sys.readFile(webConfigPath) as string, // If file exists, it has contents
   )
 
-  if (webConfig && webConfig?.compilerOptions) {
+  if (webConfig?.compilerOptions) {
     const newPathAliases = {
       ...webConfig.compilerOptions.paths,
       '$api/*': ['../api/*'],
@@ -40,11 +41,11 @@ export default async function addApiAliasToTsConfig() {
     ts.sys.writeFile(
       webConfigPath,
       // @NOTE: prettier will remove trailing commas, but whatever
-      prettify(JSON.stringify(updatedConfig), { parser: 'json' })
+      await prettify(JSON.stringify(updatedConfig), { parser: 'json' }),
     )
   } else {
     throw new Error(
-      'Could not read your web/tsconfig.json. Please follow release notes to update your config manually.'
+      'Could not read your web/tsconfig.json. Please follow release notes to update your config manually.',
     )
   }
 }

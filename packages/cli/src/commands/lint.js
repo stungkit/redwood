@@ -1,10 +1,10 @@
-import fs from 'fs'
-
 import execa from 'execa'
+import fs from 'fs-extra'
 import terminalLink from 'terminal-link'
 
+import { recordTelemetryAttributes } from '@redwoodjs/cli-helpers'
+
 import { getPaths } from '../lib'
-import c from '../lib/colors'
 
 export const command = 'lint [path..]'
 export const description = 'Lint your files'
@@ -23,12 +23,17 @@ export const builder = (yargs) => {
     .epilogue(
       `Also see the ${terminalLink(
         'Redwood CLI Reference',
-        'https://redwoodjs.com/docs/cli-commands#lint'
-      )}`
+        'https://redwoodjs.com/docs/cli-commands#lint',
+      )}`,
     )
 }
 
 export const handler = async ({ path, fix }) => {
+  recordTelemetryAttributes({
+    command: 'lint',
+    fix,
+  })
+
   try {
     const pathString = path?.join(' ')
     const result = await execa(
@@ -37,6 +42,9 @@ export const handler = async ({ path, fix }) => {
         fix && '--fix',
         !pathString && fs.existsSync(getPaths().web.src) && 'web/src',
         !pathString && fs.existsSync(getPaths().web.config) && 'web/config',
+        !pathString &&
+          fs.existsSync(getPaths().web.storybook) &&
+          'web/.storybook',
         !pathString && fs.existsSync(getPaths().scripts) && 'scripts',
         !pathString && fs.existsSync(getPaths().api.src) && 'api/src',
         pathString,
@@ -45,11 +53,11 @@ export const handler = async ({ path, fix }) => {
         cwd: getPaths().base,
         shell: true,
         stdio: 'inherit',
-      }
+      },
     )
-    process.exit(result.exitCode)
-  } catch (e) {
-    console.log(c.error(e.message))
-    process.exit(e?.exitCode || 1)
+
+    process.exitCode = result.exitCode
+  } catch (error) {
+    process.exitCode = error.exitCode ?? 1
   }
 }

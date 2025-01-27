@@ -1,9 +1,11 @@
-import fs from 'fs'
 import path from 'path'
 
+import { paramCase } from 'change-case'
+import fs from 'fs-extra'
 import { Listr } from 'listr2'
-import { paramCase } from 'param-case'
 import terminalLink from 'terminal-link'
+
+import { recordTelemetryAttributes } from '@redwoodjs/cli-helpers'
 
 import { getPaths, writeFilesTask } from '../../../lib'
 import c from '../../../lib/colors'
@@ -11,7 +13,7 @@ import { prepareForRollback } from '../../../lib/rollback'
 import { validateName, yargsDefaults } from '../helpers'
 
 const POST_RUN_INSTRUCTIONS = `Next steps...\n\n   ${c.warning(
-  'After writing your migration, you can run it with:'
+  'After writing your migration, you can run it with:',
 )}
 
      yarn rw dataMigrate up
@@ -35,7 +37,8 @@ export const files = ({ name, typescript }) => {
   }
 }
 
-export const command = 'dataMigration <name>'
+export const command = 'data-migration <name>'
+export const aliases = ['dataMigration', 'dm']
 export const description = 'Generate a data migration'
 export const builder = (yargs) => {
   yargs
@@ -51,8 +54,8 @@ export const builder = (yargs) => {
     .epilogue(
       `Also see the ${terminalLink(
         'Redwood CLI Reference',
-        'https://redwoodjs.com/docs/cli-commands#generate-datamigration'
-      )}`
+        'https://redwoodjs.com/docs/cli-commands#generate-datamigration',
+      )}`,
     )
 
   // Merge generator defaults in
@@ -62,6 +65,12 @@ export const builder = (yargs) => {
 }
 
 export const handler = async (args) => {
+  recordTelemetryAttributes({
+    command: 'generate data-migration',
+    force: args.force,
+    rollback: args.rollback,
+  })
+
   validateName(args.name)
 
   const tasks = new Listr(
@@ -79,7 +88,7 @@ export const handler = async (args) => {
         },
       },
     ].filter(Boolean),
-    { rendererOptions: { collapseSubtasks: false } }
+    { rendererOptions: { collapseSubtasks: false } },
   )
 
   try {

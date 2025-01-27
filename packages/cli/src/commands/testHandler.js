@@ -1,8 +1,9 @@
-import fs from 'fs'
 import path from 'path'
 
 import execa from 'execa'
+import fs from 'fs-extra'
 
+import { recordTelemetryAttributes } from '@redwoodjs/cli-helpers'
 import { ensurePosixPath } from '@redwoodjs/project-config'
 import { errorTelemetry, timedTelemetry } from '@redwoodjs/telemetry'
 
@@ -15,7 +16,7 @@ function isInGitRepository() {
   try {
     execa.commandSync('git rev-parse --is-inside-work-tree')
     return true
-  } catch (e) {
+  } catch {
     return false
   }
 }
@@ -24,7 +25,7 @@ function isInMercurialRepository() {
   try {
     execa.commandSync('hg --cwd . root')
     return true
-  } catch (e) {
+  } catch {
     return false
   }
 }
@@ -41,8 +42,8 @@ function isJestConfigFile(sides) {
           console.error(
             c.error(
               `\nError: Missing Jest config file ${side}/jest.config.js` +
-                '\nTo add this file, run `npx @redwoodjs/codemods update-jest-config`\n'
-            )
+                '\nTo add this file, run `npx @redwoodjs/codemods update-jest-config`\n',
+            ),
           )
           throw new Error(`Error: Jest config file not found in ${side} side`)
         }
@@ -61,41 +62,50 @@ export const handler = async ({
   dbPush = true,
   ...others
 }) => {
+  recordTelemetryAttributes({
+    command: 'test',
+    watch,
+    collectCoverage,
+    dbPush,
+  })
   const rwjsPaths = getPaths()
   const forwardJestFlags = Object.keys(others).flatMap((flagName) => {
     if (
-      ['watch', 'collect-coverage', 'db-push', '$0', '_'].includes(flagName)
+      [
+        'collect-coverage',
+        'db-push',
+        'loadEnvFiles',
+        'watch',
+        '$0',
+        '_',
+      ].includes(flagName)
     ) {
       // filter out flags meant for the rw test command only
       return []
     } else {
       // and forward on the other flags
+      const flag = flagName.length > 1 ? `--${flagName}` : `-${flagName}`
       const flagValue = others[flagName]
 
       if (Array.isArray(flagValue)) {
         // jest does not collapse flags e.g. --coverageReporters=html --coverageReporters=text
         // so we pass it on. Yargs collapses these flags into an array of values
-        return flagValue.flatMap((val) => {
-          return [flagName.length > 1 ? `--${flagName}` : `-${flagName}`, val]
-        })
+        return flagValue.flatMap((val) => [flag, val])
       } else {
-        return [
-          flagName.length > 1 ? `--${flagName}` : `-${flagName}`,
-          flagValue,
-        ]
+        return [flag, flagValue]
       }
     }
   })
 
   // Only the side params
   const sides = filterParams.filter((filterString) =>
-    project.sides().includes(filterString)
+    project.sides().includes(filterString),
   )
 
   // All the other params, apart from sides
   const jestFilterArgs = [
     ...filterParams.filter(
-      (filterString) => !project.sides().includes(filterString)
+      (filterString) => !project.sides().includes(filterString),
     ),
   ]
 
@@ -127,7 +137,7 @@ export const handler = async ({
 
   try {
     const cacheDirDb = `file:${ensurePosixPath(
-      rwjsPaths.generated.base
+      rwjsPaths.generated.base,
     )}/test.db`
     const DATABASE_URL = process.env.TEST_DATABASE_URL || cacheDirDb
 

@@ -63,7 +63,7 @@ export class ReactiveTUIContent {
     const defaultSpinner = {
       enabled: false,
       characters: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'].map((c) =>
-        RedwoodStyling.redwood(c)
+        RedwoodStyling.redwood(c),
       ),
     }
     this.spinner = { ...defaultSpinner, ...options.spinner }
@@ -179,7 +179,7 @@ export class RedwoodTUI {
   private outStream: NodeJS.WriteStream
   private errStream: NodeJS.WriteStream
 
-  private timerId?: NodeJS.Timer
+  private timerId?: NodeJS.Timeout
   private isReactive = false
 
   private reactiveContent?: ReactiveTUIContent
@@ -216,6 +216,12 @@ export class RedwoodTUI {
       throw new Error('TUI has no reactive content')
     }
 
+    // Only draw once if the TUI is not a TTY
+    if (!this.outStream.isTTY) {
+      this.drawReactive(true)
+      return
+    }
+
     if (!this.manager.isHooked) {
       // Take control of the terminal
       this.manager.hook()
@@ -234,6 +240,12 @@ export class RedwoodTUI {
    * @param clear If true, the last drawn content will be cleared
    */
   stopReactive(clear = false) {
+    // If the TUI is not a TTY, draw one last time and return
+    if (!this.outStream.isTTY) {
+      this.drawReactive(true)
+      return
+    }
+
     if (this.manager.isHooked) {
       // Stop the draw loop
       this.isReactive = false
@@ -300,7 +312,7 @@ export class RedwoodTUI {
    * @returns The prompt result
    */
   async prompt<T = object>(
-    questions: Parameters<typeof enquirerPrompt>[0]
+    questions: Parameters<typeof enquirerPrompt>[0],
   ): Promise<T> {
     const wasReactive = this.isReactive
     if (wasReactive) {
@@ -326,7 +338,7 @@ export class RedwoodTUI {
         borderColor: 'red',
         title: `⚠ Error: ${title}`,
         titleAlignment: 'left',
-      })
+      }),
     )
   }
 
@@ -343,7 +355,7 @@ export class RedwoodTUI {
         borderColor: 'yellow',
         title: `⚠ Warning: ${title}`,
         titleAlignment: 'left',
-      })
+      }),
     )
   }
 }

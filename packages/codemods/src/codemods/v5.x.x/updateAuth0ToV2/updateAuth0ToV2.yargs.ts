@@ -3,7 +3,8 @@ import path from 'path'
 import execa from 'execa'
 import task from 'tasuku'
 
-import getRWPaths from '../../../lib/getRWPaths'
+import { getPaths } from '@redwoodjs/project-config'
+
 import isTSProject from '../../../lib/isTSProject'
 import runTransform from '../../../lib/runTransform'
 
@@ -18,17 +19,17 @@ export const handler = () => {
 
     try {
       await execa.command('yarn up @auth0/auth0-spa-js@^2', {
-        cwd: getRWPaths().web.base,
+        cwd: getPaths().web.base,
       })
     } catch {
       console.error(
-        "Couldn't update @auth0/auth0-spa-js; you'll have to upgrade it manually to the latest v2.x.x version"
+        "Couldn't update @auth0/auth0-spa-js; you'll have to upgrade it manually to the latest v2.x.x version",
       )
     }
 
     await runTransform({
       transformPath: path.join(__dirname, 'updateAuth0ToV2.js'),
-      targetPaths: [path.join(getRWPaths().web.src, authFile)],
+      targetPaths: [path.join(getPaths().web.src, authFile)],
     })
 
     setOutput('All done! Run `yarn rw lint --fix` to prettify your code')

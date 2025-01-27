@@ -8,6 +8,9 @@ module.exports = {
       items: [
         { type: 'doc', label: 'Foreword', id: 'tutorial/foreword' },
         {
+          'Chapter 0': ['tutorial/chapter0/what-is-redwood'],
+        },
+        {
           'Chapter 1': [
             'tutorial/chapter1/prerequisites',
             'tutorial/chapter1/installation',
@@ -94,6 +97,7 @@ module.exports = {
             { type: 'doc', id: 'auth/supertokens' },
           ],
         },
+        'background-jobs',
         'builds',
         'cells',
         'cli-commands',
@@ -101,7 +105,7 @@ module.exports = {
         'contributing-overview',
         'contributing-walkthrough',
         'cors',
-        'custom-web-index',
+        'create-redwood-app',
         'data-migrations',
         {
           type: 'category',
@@ -114,6 +118,11 @@ module.exports = {
           items: [
             { type: 'doc', label: 'Introduction', id: 'deploy/introduction' },
             { type: 'doc', label: 'Baremetal', id: 'deploy/baremetal' },
+            {
+              type: 'doc',
+              label: 'GCP or AWS via Coherence',
+              id: 'deploy/coherence',
+            },
             {
               type: 'doc',
               label: 'AWS via Flightcontrol',
@@ -130,23 +139,66 @@ module.exports = {
             { type: 'doc', label: 'Vercel', id: 'deploy/vercel' },
           ],
         },
+        'database-seeds',
         'directives',
+        'docker',
         'environment-variables',
         'forms',
-        'graphql',
+        {
+          type: 'category',
+          label: 'GraphQL',
+          link: {
+            type: 'generated-index',
+            title: 'GraphQL',
+            slug: 'graphql/index',
+          },
+          items: [
+            { type: 'doc', label: 'About', id: 'graphql' },
+            { type: 'doc', label: 'Caching', id: 'graphql/caching' },
+            { type: 'doc', label: 'Fragments', id: 'graphql/fragments' },
+            {
+              type: 'doc',
+              label: 'Trusted Documents',
+              id: 'graphql/trusted-documents',
+            },
+            {
+              type: 'doc',
+              label: 'Mocking GraphQL Requests',
+              id: 'graphql/mocking-graphql-requests',
+            },
+            {
+              type: 'doc',
+              label: 'Realtime',
+              id: 'graphql/realtime',
+            },
+          ],
+        },
         'local-postgres-setup',
         'logger',
-        'mocking-graphql-requests',
+        'mailer',
+        {
+          type: 'category',
+          label: 'Monitoring',
+          link: {
+            type: 'generated-index',
+            title: 'Monitoring',
+            slug: 'monitoring/index',
+          },
+          items: [{ type: 'doc', label: 'Sentry', id: 'monitoring/sentry' }],
+        },
         'prerender',
         'project-configuration-dev-test-build',
         'redwoodrecord',
+        'realtime',
         'router',
         'schema-relations',
         'security',
         'seo-head',
+        'server-file',
         'serverless-functions',
         'services',
         'storybook',
+        'studio',
         'testing',
         'toast-notifications',
         {
@@ -180,7 +232,8 @@ module.exports = {
           ],
         },
         'webhooks',
-        'webpack-configuration',
+        'uploads',
+        'vite-configuration',
       ],
     },
     {
