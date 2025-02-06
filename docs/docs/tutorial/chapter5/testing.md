@@ -6,7 +6,7 @@ Let's run the test suite to make sure everything is working as expected (you can
 yarn rw test
 ```
 
-The `test` command starts a persistent process which watches for file changes and automatically runs any tests associated with the changed file(s) (changing a component *or* its tests will trigger a test run).
+The `test` command starts a persistent process which watches for file changes and automatically runs any tests associated with the changed file(s) (changing a component _or_ its tests will trigger a test run).
 
 Since we just started the suite, and we haven't changed any files yet, it may not actually run any tests at all. Hit `a` to tell it run **a**ll tests and we should get something like this:
 
@@ -49,8 +49,8 @@ Note that the summary on the bottom indicates that there was 1 test that failed.
 
 If you continued with your own repo from chapters 1-4, you may see some other failures here or none at all: we made a lot of changes to the pages, components and cells we generated, but didn't update the tests to reflect the changes we made. (Another reason to start with the [example repo](../intermission.md#using-the-example-repo-recommended)!)
 
-To switch back to the default mode where test are **o**nly run for changed files, press `o` now (or quit and restart `yarn rw test`).
+To switch back to the default mode where test are **only** run for changed files, press `o` now (or quit and restart `yarn rw test`).
 
-What we want to aim for is all green in that left column and no failed tests. In fact best practices tell us you should not even commit any code to your repo unless the test suite passes locally. Not everyone adheres to this policy quite as strictly as others...*&lt;cough, cough&gt;*
+What we want to aim for is all green in that left column and no failed tests. In fact best practices tell us you should not even commit any code to your repo unless the test suite passes locally. Not everyone adheres to this policy quite as strictly as others..._&lt;cough, cough&gt;_
 
 We've got an excellent document on [Testing](../../testing.md) which you should definitely read if you're brand new to testing, especially the [Terminology](../../testing.md#terminology) and [Redwood and Testing](../../testing.md#redwood-and-testing) sections. For now though, proceed to the next section and we'll go over our approach to getting that last failed test passing.

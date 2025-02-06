@@ -1,3 +1,5 @@
+import { describe, it, expect } from 'vitest'
+
 import { LogFormatter } from '../logFormatter/index'
 
 const logFormatter = LogFormatter()
@@ -28,13 +30,13 @@ describe('LogFormatter', () => {
   describe('Formats log messages', () => {
     it('Formats newline-delimited json data with a message', () => {
       expect(
-        logFormatter({ level: 10, message: 'Message in a bottle' })
+        logFormatter({ level: 10, message: 'Message in a bottle' }),
       ).toMatch('Message in a bottle')
     })
 
     it('Formats newline-delimited json data with a msg', () => {
       expect(logFormatter({ level: 10, msg: 'Message in a bottle' })).toMatch(
-        'Message in a bottle'
+        'Message in a bottle',
       )
     })
 
@@ -67,13 +69,13 @@ describe('LogFormatter', () => {
           query: {
             id: 1,
           },
-        })
+        }),
       ).toMatch('"id": 1')
     })
 
     it('Handles operation name', () => {
       expect(
-        logFormatter({ level: 10, operationName: 'GET_BLOG_POST_BY_ID' })
+        logFormatter({ level: 10, operationName: 'GET_BLOG_POST_BY_ID' }),
       ).toMatch('GET_BLOG_POST_BY_ID')
     })
 
@@ -82,7 +84,7 @@ describe('LogFormatter', () => {
         logFormatter({
           level: 10,
           data: { post: { id: 1, title: 'My Blog Post' } },
-        })
+        }),
       ).toMatch('My Blog Post')
     })
 
@@ -93,7 +95,7 @@ describe('LogFormatter', () => {
         logFormatter({
           level: 10,
           userAgent,
-        })
+        }),
       ).toMatch(/Mozilla.*AppleWebKit.*Safari/)
     })
   })
@@ -104,7 +106,7 @@ describe('LogFormatter', () => {
         logFormatter({
           level: 10,
           custom: 'I should see this custom message text',
-        })
+        }),
       ).toMatch('I should see this')
     })
 
@@ -113,7 +115,7 @@ describe('LogFormatter', () => {
         logFormatter({
           level: 10,
           custom: 'I should see this custom emoji and label',
-        })
+        }),
       ).toMatch('🗒 Custom')
     })
 
@@ -122,47 +124,68 @@ describe('LogFormatter', () => {
         logFormatter({
           level: 10,
           custom: {
-            msg: 'I should see this custom message in the log',
+            string: 'I should see this custom message in the log',
           },
-        })
+        }),
       ).toMatch('I should see this custom message in the log')
     })
-  })
 
-  it('Should include the custom log attribute info with a number attribute', () => {
-    expect(
-      logFormatter({
-        level: 10,
-        custom: {
-          msg: 'I should see this custom message and number in the log',
-          number: 100,
-        },
-      })
-    ).toMatch('100')
-  })
+    it('Should include the custom log attribute info with a number attribute', () => {
+      expect(
+        logFormatter({
+          level: 10,
+          custom: {
+            string: 'I should see this custom message and number in the log',
+            number: 100,
+          },
+        }),
+      ).toMatch('100')
+    })
 
-  it('Should include the custom log attribute info with a nested object attribute', () => {
-    expect(
-      logFormatter({
-        level: 10,
-        custom: {
-          msg: 'I should see this custom object in the log',
-          obj: { foo: 'bar' },
-        },
-      })
-    ).toMatch('"foo": "bar"')
-  })
+    it('Should include the custom log attribute info with a nested object attribute', () => {
+      expect(
+        logFormatter({
+          level: 10,
+          custom: {
+            string: 'I should see this custom object in the log',
+            obj: { foo: 'bar' },
+          },
+        }),
+      ).toMatch('"foo": "bar"')
+    })
 
-  it('Should include the custom log attribute info with a nested object attribute', () => {
-    expect(
-      logFormatter({
-        level: 10,
-        custom: {
-          msg: 'I should see this custom object in the log',
-          obj: { foo: 'bar' },
-        },
-      })
-    ).toMatch('"foo": "bar"')
+    it('Should include the custom log attribute info with a nested object attribute', () => {
+      expect(
+        logFormatter({
+          level: 10,
+          custom: {
+            string: 'I should see this custom object in the log',
+            obj: { foo: 'bar' },
+          },
+        }),
+      ).toMatch('"foo": "bar"')
+    })
+
+    it('Should filter out overly verbose custom log attributes', () => {
+      expect(
+        logFormatter({
+          level: 10,
+          custom: {
+            time: 1,
+            pid: 1,
+            hostname: 'should not appear',
+            reqId: 'should not appear',
+            req: {
+              method: 'should not appear',
+              url: 'should not appear',
+              hostname: 'should not appear',
+              remoteAddress: 'should not appear',
+              remotePort: 1,
+            },
+          },
+        }),
+      ).not.toMatch('should not appear')
+    })
   })
 
   it('Should format error stack traces', () => {
@@ -174,7 +197,7 @@ describe('LogFormatter', () => {
           stack:
             'A stack trace \n will have \n several lines \n at some line number \n at some code',
         },
-      })
+      }),
     ).toMatch(/at some line number/)
   })
 
@@ -188,7 +211,7 @@ describe('LogFormatter', () => {
           stack:
             'A stack trace \n will have \n several lines \n at some line number \n at some code',
         },
-      })
+      }),
     ).toMatch(/GraphQL Error Info/)
   })
 
@@ -199,7 +222,7 @@ describe('LogFormatter', () => {
           level: 10,
           apiVersion: '4.2.1',
           environment: 'staging',
-        })
+        }),
       ).toMatch('"apiVersion": "4.2.1"')
 
       expect(
@@ -207,7 +230,7 @@ describe('LogFormatter', () => {
           level: 10,
           apiVersion: '4.2.1',
           environment: 'staging',
-        })
+        }),
       ).toMatch('"environment": "staging"')
     })
 
@@ -219,7 +242,7 @@ describe('LogFormatter', () => {
             environment: 'staging',
             version: '4.2.1',
           },
-        })
+        }),
       ).toMatch('"deploy"')
 
       expect(
@@ -229,7 +252,7 @@ describe('LogFormatter', () => {
             environment: 'staging',
             version: '4.2.1',
           },
-        })
+        }),
       ).toMatch('"environment": "staging"')
 
       logFormatter({
@@ -247,7 +270,7 @@ describe('LogFormatter', () => {
             environment: 'staging',
             version: '4.2.1',
           },
-        })
+        }),
       ).toMatch('"version": "4.2.1"')
     })
   })
@@ -256,7 +279,7 @@ describe('LogFormatter', () => {
     expect(
       logFormatter({
         level: 10,
-      })
+      }),
     ).not.toContain('undefined')
   })
 })

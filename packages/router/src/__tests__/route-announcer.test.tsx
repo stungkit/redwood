@@ -1,10 +1,14 @@
-import { render, waitFor, act } from '@testing-library/react'
-import '@testing-library/jest-dom/extend-expect'
+import React from 'react'
 
-import { getAnnouncement } from '../a11yUtils'
-import { navigate } from '../history'
-import RouteAnnouncement from '../route-announcement'
-import { Router, Route, routes } from '../router'
+import { render, waitFor, act } from '@testing-library/react'
+import { beforeEach, test, expect } from 'vitest'
+
+import { getAnnouncement } from '../a11yUtils.js'
+import { navigate } from '../history.js'
+import { namedRoutes as routes } from '../namedRoutes.js'
+import RouteAnnouncement from '../route-announcement.js'
+import { Route } from '../Route.js'
+import { Router } from '../router.js'
 
 // SETUP
 const HomePage = () => <h1>Home Page</h1>
@@ -48,7 +52,7 @@ const EmptyH1Page = () => (
 )
 
 beforeEach(() => {
-  window.history.pushState({}, null, '/')
+  window.history.pushState({}, '', '/')
   Object.keys(routes).forEach((key) => delete routes[key])
 })
 
@@ -92,6 +96,7 @@ test('gets the announcement in the correct order of priority', async () => {
 
   // navigate to h1
   // since there's no RouteAnnouncement, it should announce the h1.
+  // @ts-expect-error - No type gen here for routes like there is in a real app
   act(() => navigate(routes.h1()))
   await waitFor(() => {
     screen.getByText(/H1 Page/i)
@@ -100,6 +105,7 @@ test('gets the announcement in the correct order of priority', async () => {
 
   // navigate to noH1.
   // since there's no h1, it should announce the title.
+  // @ts-expect-error - No type gen here for routes like there is in a real app
   act(() => navigate(routes.noH1()))
   await waitFor(() => {
     screen.getByText(/NoH1 Page/i)
@@ -111,6 +117,7 @@ test('gets the announcement in the correct order of priority', async () => {
   // navigate to noH1OrTitle.
   // since there's no h1 or title,
   // it should announce the location.
+  // @ts-expect-error - No type gen here for routes like there is in a real app
   act(() => navigate(routes.noH1OrTitle()))
   await waitFor(() => {
     screen.getByText(/NoH1OrTitle Page/i)

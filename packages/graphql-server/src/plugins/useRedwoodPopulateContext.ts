@@ -1,9 +1,6 @@
-import { Plugin } from 'graphql-yoga'
+import type { Plugin } from 'graphql-yoga'
 
-import {
-  RedwoodGraphQLContext,
-  GraphQLHandlerOptions,
-} from '../functions/types'
+import type { RedwoodGraphQLContext, GraphQLHandlerOptions } from '../types'
 
 /**
  * This Envelop plugin enriches the context on a per-request basis
@@ -11,7 +8,7 @@ import {
  * @returns
  */
 export const useRedwoodPopulateContext = (
-  populateContextBuilder: NonNullable<GraphQLHandlerOptions['context']>
+  populateContextBuilder: NonNullable<GraphQLHandlerOptions['context']>,
 ): Plugin<RedwoodGraphQLContext> => {
   return {
     async onContextBuilding({ context, extendContext }) {

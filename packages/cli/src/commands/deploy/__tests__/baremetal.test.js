@@ -1,7 +1,10 @@
 import { Listr } from 'listr2'
+import { vi, beforeEach, describe, it, expect } from 'vitest'
 
-jest.mock('@redwoodjs/project-config', () => {
+vi.mock('@redwoodjs/project-config', async (importOriginal) => {
+  const originalProjectConfig = await importOriginal()
   return {
+    ...originalProjectConfig,
     getPaths: () => ({
       base: `${__dirname}/fixtures`,
     }),
@@ -15,8 +18,8 @@ describe('verifyConfig', () => {
     expect(() =>
       baremetal.verifyConfig(
         { production: { servers: [{ host: 'prod.server.com' }] } },
-        {}
-      )
+        {},
+      ),
     ).toThrow('Must specify an environment to deploy to')
   })
 
@@ -24,8 +27,8 @@ describe('verifyConfig', () => {
     expect(() =>
       baremetal.verifyConfig(
         { production: { servers: [{ host: 'prod.server.com' }] } },
-        { environment: 'staging' }
-      )
+        { environment: 'staging' },
+      ),
     ).toThrow('No servers found for environment "staging"')
   })
 })
@@ -36,9 +39,9 @@ describe('verifyServerConfig', () => {
       baremetal.verifyServerConfig({
         path: '/var/www/app',
         repo: 'git://github.com',
-      })
+      }),
     ).toThrow(
-      '"host" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml'
+      '"host" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml',
     )
   })
 
@@ -47,9 +50,9 @@ describe('verifyServerConfig', () => {
       baremetal.verifyServerConfig({
         host: 'host.test',
         repo: 'git://github.com',
-      })
+      }),
     ).toThrow(
-      '"path" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml'
+      '"path" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml',
     )
   })
 
@@ -58,10 +61,107 @@ describe('verifyServerConfig', () => {
       baremetal.verifyServerConfig({
         host: 'host.test',
         path: '/var/www/app',
-      })
+      }),
     ).toThrow(
-      '"repo" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml'
+      '"repo" config option not set. See https://redwoodjs.com/docs/deployment/baremetal#deploytoml',
     )
+  })
+
+  it('throws an error if freeSpaceRequired is a string of letters', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: 'not a number',
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('throws an error if freeSpaceRequired is a float (as a string)', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: '100.5',
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('throws an error if freeSpaceRequired is a float', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: 100.5,
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('throws an error if freeSpaceRequired includes a unit', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: '3GB',
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: '2048 MB',
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('throws an error if freeSpaceRequired is negative (as a string)', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: '-1',
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('throws an error if freeSpaceRequired is negative', () => {
+    expect(() =>
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: -1,
+      }),
+    ).toThrow('"freeSpaceRequired" must be an integer >= 0')
+  })
+
+  it('allows freeSpaceRequired to be 0 (as a string)', () => {
+    expect(
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: '0',
+      }),
+    ).toEqual(true)
+  })
+
+  it('allows freeSpaceRequired to be 0', () => {
+    expect(
+      baremetal.verifyServerConfig({
+        host: 'host.test',
+        path: '/var/www/app',
+        repo: 'git://github.com',
+        freeSpaceRequired: 0,
+      }),
+    ).toEqual(true)
   })
 
   it('returns true if no problems', () => {
@@ -70,7 +170,8 @@ describe('verifyServerConfig', () => {
         host: 'host.test',
         path: '/var/www/app',
         repo: 'git://github.com',
-      })
+        freeSpaceRequired: 2024,
+      }),
     ).toEqual(true)
   })
 })
@@ -80,7 +181,7 @@ describe('maintenanceTasks', () => {
     const tasks = baremetal.maintenanceTasks(
       'up',
       {},
-      { path: '/var/www/app', processNames: ['api'] }
+      { path: '/var/www/app', processNames: ['api'] },
     )
 
     expect(tasks.length).toEqual(2)
@@ -92,7 +193,7 @@ describe('maintenanceTasks', () => {
     const tasks = baremetal.maintenanceTasks(
       'down',
       {},
-      { path: '/var/www/app', processNames: ['api'] }
+      { path: '/var/www/app', processNames: ['api'] },
     )
 
     expect(tasks.length).toEqual(2)
@@ -106,7 +207,7 @@ describe('rollbackTasks', () => {
     const tasks1 = baremetal.rollbackTasks(
       1,
       {},
-      { path: '/var/www/app', processNames: ['api'] }
+      { path: '/var/www/app', processNames: ['api'] },
     )
 
     expect(tasks1.length).toEqual(2)
@@ -116,7 +217,7 @@ describe('rollbackTasks', () => {
     const tasks2 = baremetal.rollbackTasks(
       5,
       {},
-      { path: '/var/www/app', processNames: ['api'] }
+      { path: '/var/www/app', processNames: ['api'] },
     )
 
     expect(tasks2[0].title).toMatch('Rolling back 5')
@@ -137,6 +238,7 @@ describe('serverConfigWithDefaults', () => {
       monitorCommand: 'god',
       sides: ['native', 'cli'],
       keepReleases: 2,
+      freeSpaceRequired: 1000,
     }
     const config = baremetal.serverConfigWithDefaults(serverConfig, {})
     expect(config).toEqual(serverConfig)
@@ -160,9 +262,14 @@ describe('serverConfigWithDefaults', () => {
   it('overrides branch name from yargs no matter what', () => {
     const config = baremetal.serverConfigWithDefaults(
       { branch: 'earth' },
-      { branch: 'moon' }
+      { branch: 'moon' },
     )
     expect(config.branch).toEqual('moon')
+  })
+
+  it('provides default freeSpaceRequired', () => {
+    const config = baremetal.serverConfigWithDefaults({}, {})
+    expect(config.freeSpaceRequired).toEqual(2048)
   })
 })
 
@@ -173,7 +280,7 @@ describe('parseConfig', () => {
       `
         [[production.servers]]
         host = 'server.com'
-      `
+      `,
     )
 
     expect(envConfig).toEqual({ servers: [{ host: 'server.com' }] })
@@ -188,7 +295,7 @@ describe('parseConfig', () => {
 
         [[staging.servers]]
         host = 'staging.server.com'
-      `
+      `,
     )
 
     expect(envConfig).toEqual({ servers: [{ host: 'staging.server.com' }] })
@@ -200,7 +307,7 @@ describe('parseConfig', () => {
       `
         [[production.servers]]
         host = 'server.com'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({})
@@ -216,7 +323,7 @@ describe('parseConfig', () => {
 
         [[production.servers]]
         host = 'server.com'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({ install: ['yarn global'] })
@@ -233,7 +340,7 @@ describe('parseConfig', () => {
 
         [[production.servers]]
         host = 'server.com'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({
@@ -252,7 +359,7 @@ describe('parseConfig', () => {
 
         [[production.servers]]
         host = 'server.com'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({
@@ -270,7 +377,7 @@ describe('parseConfig', () => {
 
         [production.before]
         install = 'yarn env'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({ install: ['yarn env'] })
@@ -290,7 +397,7 @@ describe('parseConfig', () => {
         [production.before]
         install = 'yarn env one'
         update = 'yarn env two'
-      `
+      `,
     )
 
     expect(envLifecycle.before).toEqual({
@@ -313,7 +420,7 @@ describe('parseConfig', () => {
         repo = '\${TEST_VAR_REPO:git://github.com}'
         path = '\${TEST_VAR_PATH:/var/www/app}'
         privateKeyPath = '/Users/me/.ssh/id_rsa'
-      `
+      `,
     )
     const server = servers[0]
     expect(server.host).toEqual('staging.server.com')
@@ -323,8 +430,8 @@ describe('parseConfig', () => {
     // No substitution should work
     expect(server.privateKeyPath).toEqual('/Users/me/.ssh/id_rsa')
 
-    delete process.env['TEST_VAR_HOST']
-    delete process.env['TEST_VAR_REPO']
+    delete process.env.TEST_VAR_HOST
+    delete process.env.TEST_VAR_REPO
   })
 })
 
@@ -505,6 +612,7 @@ describe('commandWithLifecycleEvents', () => {
 
 describe('deployTasks', () => {
   const defaultYargs = {
+    df: true,
     update: true,
     install: true,
     migrate: true,
@@ -518,33 +626,146 @@ describe('deployTasks', () => {
     path: '/var/www/app',
     processNames: ['serve'],
     sides: ['api'],
+    freeSpaceRequired: 2048,
   }
+
+  const mockTask = {
+    skip: vi.fn(),
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
 
   it('provides a default list of tasks', () => {
     const tasks = baremetal.deployTasks(
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(Object.keys(tasks).length).toEqual(8)
-    expect(tasks[0].title).toMatch('Cloning')
+    expect(Object.keys(tasks).length).toEqual(9)
+    expect(tasks[0].title).toEqual('Checking available disk space...')
     expect(tasks[0].skip()).toEqual(false)
-    expect(tasks[1].title).toMatch('Symlink .env')
+    expect(tasks[1].title).toMatch('Cloning')
     expect(tasks[1].skip()).toEqual(false)
-    expect(tasks[2].title).toMatch('Installing')
+    expect(tasks[2].title).toMatch('Symlink .env')
     expect(tasks[2].skip()).toEqual(false)
-    expect(tasks[3].title).toMatch('DB Migrations')
+    expect(tasks[3].title).toMatch('Installing')
     expect(tasks[3].skip()).toEqual(false)
-    expect(tasks[4].title).toMatch('Building api')
+    expect(tasks[4].title).toMatch('DB Migrations')
     expect(tasks[4].skip()).toEqual(false)
-    expect(tasks[5].title).toMatch('Symlinking current')
+    expect(tasks[5].title).toMatch('Building api')
     expect(tasks[5].skip()).toEqual(false)
-    expect(tasks[6].title).toMatch('Restarting serve')
+    expect(tasks[6].title).toMatch('Symlinking current')
     expect(tasks[6].skip()).toEqual(false)
-    expect(tasks[7].title).toMatch('Cleaning up')
+    expect(tasks[7].title).toMatch('Restarting serve')
     expect(tasks[7].skip()).toEqual(false)
+    expect(tasks[8].title).toMatch('Cleaning up')
+    expect(tasks[8].skip()).toEqual(false)
+  })
+
+  it('skips the available space check if --no-df is passed', () => {
+    const tasks = baremetal.deployTasks(
+      { ...defaultYargs, df: false },
+      {}, // ssh
+      defaultServerConfig,
+      {}, // lifecycle
+    )
+
+    expect(tasks[0].skip()).toBeTruthy()
+  })
+
+  it('skips the available space check if freeSpaceRequired is set to 0', () => {
+    const tasks = baremetal.deployTasks(
+      { ...defaultYargs },
+      {}, // ssh
+      { ...defaultServerConfig, freeSpaceRequired: 0 },
+      {}, // lifecycle
+    )
+
+    expect(tasks[0].skip()).toBeTruthy()
+  })
+
+  it('throws an error if there is not enough available space on the server and freeSpaceRequired is not configured', () => {
+    const ssh = {
+      exec: () => ({ stdout: 'df:1875893' }),
+    }
+
+    const { freeSpaceRequired: _, ...serverConfig } = defaultServerConfig
+
+    const tasks = baremetal.deployTasks(
+      defaultYargs,
+      ssh,
+      { ...serverConfig, sides: ['api', 'web'] },
+      {}, // lifecycle
+    )
+
+    expect(() => tasks[0].task({}, {})).rejects.toThrowError(
+      /Not enough disk space\. You need at least 2048MB free space to continue\. \(Currently 1832MB available\)/,
+    )
+  })
+
+  it('throws an error if there is less available space on the server than freeSpaceRequired', () => {
+    const ssh = {
+      exec: () => ({ stdout: 'df:3875893' }),
+    }
+
+    const tasks = baremetal.deployTasks(
+      defaultYargs,
+      ssh,
+      {
+        ...defaultServerConfig,
+        sides: ['api', 'web'],
+        freeSpaceRequired: 4096,
+      },
+      {}, // lifecycle
+    )
+
+    expect(() => tasks[0].task({}, {})).rejects.toThrowError(
+      /Not enough disk space\. You need at least 4096MB free space to continue/,
+    )
+  })
+
+  it("warns if it can't get the available space", async () => {
+    const ssh = {
+      exec: () => ({ stdout: '', stderr: 'df: command not found' }),
+    }
+
+    const tasks = baremetal.deployTasks(
+      defaultYargs,
+      ssh,
+      { ...defaultServerConfig, sides: ['api', 'web'] },
+      {}, // lifecycle
+    )
+
+    await tasks[0].task({}, mockTask)
+
+    expect(mockTask.skip).toHaveBeenCalledWith(
+      expect.stringContaining('Warning: Could not get disk space information'),
+    )
+  })
+
+  it("warns if it can't parse the output of the ssh command", async () => {
+    const ssh = {
+      exec: () => ({ stdout: 'df:/dev/sda1' }),
+    }
+
+    const tasks = baremetal.deployTasks(
+      defaultYargs,
+      ssh,
+      { ...defaultServerConfig, sides: ['api', 'web'] },
+      {}, // lifecycle
+    )
+
+    await tasks[0].task({}, mockTask)
+
+    expect(mockTask.skip).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Warning: Could not parse disk space information',
+      ),
+    )
   })
 
   it('builds each side separately', () => {
@@ -552,12 +773,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       { ...defaultServerConfig, sides: ['api', 'web'] },
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[4].title).toMatch('Building api')
-    expect(tasks[5].title).toMatch('Building web')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[5].title).toMatch('Building api')
+    expect(tasks[6].title).toMatch('Building web')
   })
 
   it('skips migrations if migrate = false in config', () => {
@@ -565,11 +786,11 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       { ...defaultServerConfig, migrate: false },
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(Object.keys(tasks).length).toEqual(8)
-    expect(tasks[3].skip()).toEqual(true)
+    expect(Object.keys(tasks).length).toEqual(9)
+    expect(tasks[4].skip()).toEqual(true)
   })
 
   it('starts pm2 if --first-run flag set', () => {
@@ -577,12 +798,12 @@ describe('deployTasks', () => {
       { ...defaultYargs, firstRun: true },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[6].title).toMatch('Starting serve')
-    expect(tasks[7].title).toMatch('Saving serve')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[7].title).toMatch('Starting serve')
+    expect(tasks[8].title).toMatch('Saving serve')
   })
 
   it('skips clone and symlinks if --no-update flag passed', () => {
@@ -590,12 +811,12 @@ describe('deployTasks', () => {
       { ...defaultYargs, update: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[0].skip()).toEqual(true)
     expect(tasks[1].skip()).toEqual(true)
-    expect(tasks[5].skip()).toEqual(true)
+    expect(tasks[2].skip()).toEqual(true)
+    expect(tasks[6].skip()).toEqual(true)
   })
 
   it('skips install if --no-install flag passed', () => {
@@ -603,10 +824,10 @@ describe('deployTasks', () => {
       { ...defaultYargs, install: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[2].skip()).toEqual(true)
+    expect(tasks[3].skip()).toEqual(true)
   })
 
   it('skips migrations if --no-migrate flag passed', () => {
@@ -614,10 +835,10 @@ describe('deployTasks', () => {
       { ...defaultYargs, migrate: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[3].skip()).toEqual(true)
+    expect(tasks[4].skip()).toEqual(true)
   })
 
   it('skips build if --no-build flag passed', () => {
@@ -625,10 +846,10 @@ describe('deployTasks', () => {
       { ...defaultYargs, build: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[4].skip()).toEqual(true)
+    expect(tasks[5].skip()).toEqual(true)
   })
 
   it('skips restart if --no-restart flag passed', () => {
@@ -636,10 +857,10 @@ describe('deployTasks', () => {
       { ...defaultYargs, restart: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[6].skip()).toEqual(true)
+    expect(tasks[7].skip()).toEqual(true)
   })
 
   it('skips cleanup if --no-cleanup flag passed', () => {
@@ -647,10 +868,10 @@ describe('deployTasks', () => {
       { ...defaultYargs, cleanup: false },
       {}, // ssh
       defaultServerConfig,
-      {} // lifecycle
+      {}, // lifecycle
     )
 
-    expect(tasks[7].skip()).toEqual(true)
+    expect(tasks[8].skip()).toEqual(true)
   })
 
   it('injects lifecycle events for update', () => {
@@ -658,12 +879,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { update: ['touch before-update.txt'] } }
+      { before: { update: ['touch before-update.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[0].title).toMatch('Before update: `touch before-update.txt`')
-    expect(tasks[1].title).toMatch('Cloning')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[1].title).toMatch('Before update: `touch before-update.txt`')
+    expect(tasks[2].title).toMatch('Cloning')
   })
 
   it('injects lifecycle events for install', () => {
@@ -671,12 +892,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { install: ['touch before-install.txt'] } }
+      { before: { install: ['touch before-install.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[2].title).toMatch('Before install: `touch before-install.txt`')
-    expect(tasks[3].title).toMatch('Install')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[3].title).toMatch('Before install: `touch before-install.txt`')
+    expect(tasks[4].title).toMatch('Install')
   })
 
   it('injects lifecycle events for migrate', () => {
@@ -684,12 +905,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { migrate: ['touch before-migrate.txt'] } }
+      { before: { migrate: ['touch before-migrate.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[3].title).toMatch('Before migrate: `touch before-migrate.txt`')
-    expect(tasks[4].title).toMatch('DB Migrations')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[4].title).toMatch('Before migrate: `touch before-migrate.txt`')
+    expect(tasks[5].title).toMatch('DB Migrations')
   })
 
   it('injects lifecycle events for build', () => {
@@ -697,12 +918,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { build: ['touch before-build.txt'] } }
+      { before: { build: ['touch before-build.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[4].title).toMatch('Before build: `touch before-build.txt`')
-    expect(tasks[5].title).toMatch('Building api')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[5].title).toMatch('Before build: `touch before-build.txt`')
+    expect(tasks[6].title).toMatch('Building api')
   })
 
   it('injects lifecycle events for restart', () => {
@@ -710,12 +931,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { restart: ['touch before-restart.txt'] } }
+      { before: { restart: ['touch before-restart.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[6].title).toMatch('Before restart: `touch before-restart.txt`')
-    expect(tasks[7].title).toMatch('Restarting')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[7].title).toMatch('Before restart: `touch before-restart.txt`')
+    expect(tasks[8].title).toMatch('Restarting')
   })
 
   it('injects lifecycle events for cleanup', () => {
@@ -723,12 +944,12 @@ describe('deployTasks', () => {
       defaultYargs,
       {}, // ssh
       defaultServerConfig,
-      { before: { cleanup: ['touch before-cleanup.txt'] } }
+      { before: { cleanup: ['touch before-cleanup.txt'] } },
     )
 
-    expect(Object.keys(tasks).length).toEqual(9)
-    expect(tasks[7].title).toMatch('Before cleanup: `touch before-cleanup.txt`')
-    expect(tasks[8].title).toMatch('Cleaning up')
+    expect(Object.keys(tasks).length).toEqual(10)
+    expect(tasks[8].title).toMatch('Before cleanup: `touch before-cleanup.txt`')
+    expect(tasks[9].title).toMatch('Cleaning up')
   })
 })
 
@@ -736,11 +957,11 @@ describe('commands', () => {
   it('contains a top-level task for each server in an environment', () => {
     const prodServers = baremetal.commands(
       { environment: 'production', releaseDir: '2022051120000' },
-      {}
+      {},
     )
     const stagingServers = baremetal.commands(
       { environment: 'staging', releaseDir: '2022051120000' },
-      {}
+      {},
     )
 
     expect(prodServers.length).toEqual(2)
@@ -754,7 +975,7 @@ describe('commands', () => {
   it('a single server contains nested deploy tasks', () => {
     const servers = baremetal.commands(
       { environment: 'staging', releaseDir: '2022051120000' },
-      {}
+      {},
     )
 
     expect(servers[0].task()).toBeInstanceOf(Listr)
@@ -763,22 +984,22 @@ describe('commands', () => {
   it('contains connection and disconnection tasks', () => {
     const servers = baremetal.commands(
       { environment: 'staging', releaseDir: '2022051120000' },
-      {}
+      {},
     )
     const tasks = servers[0].task().tasks
 
     expect(tasks[0].title).toMatch('Connecting')
-    expect(tasks[9].title).toMatch('Disconnecting')
+    expect(tasks[10].title).toMatch('Disconnecting')
   })
 
   it('contains deploy tasks by default', () => {
     const servers = baremetal.commands(
       { environment: 'staging', releaseDir: '2022051120000' },
-      {}
+      {},
     )
     const tasks = servers[0].task().tasks
 
-    expect(tasks[1].title).toMatch('Cloning')
+    expect(tasks[2].title).toMatch('Cloning')
   })
 
   it('contains maintenance tasks if yargs are set', () => {
@@ -788,7 +1009,7 @@ describe('commands', () => {
         releaseDir: '2022051120000',
         maintenance: 'up',
       },
-      {}
+      {},
     )
     const tasks = servers[0].task().tasks
 
@@ -803,7 +1024,7 @@ describe('commands', () => {
         releaseDir: '2022051120000',
         rollback: 2,
       },
-      {}
+      {},
     )
     const tasks = servers[0].task().tasks
 
@@ -817,11 +1038,11 @@ describe('commands', () => {
         environment: 'test',
         releaseDir: '2022051120000',
       },
-      {}
+      {},
     )
     const tasks = servers[0].task().tasks
 
-    expect(tasks[1].title).toEqual('Before update: `touch update`')
-    expect(tasks[5].title).toEqual('After install: `touch install`')
+    expect(tasks[2].title).toEqual('Before update: `touch update`')
+    expect(tasks[6].title).toEqual('After install: `touch install`')
   })
 })

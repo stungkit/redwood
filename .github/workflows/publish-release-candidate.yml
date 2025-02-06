@@ -14,21 +14,26 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   check-git-tags:
     name: 🏷 Check git tags
     if: github.repository == 'redwoodjs/redwood'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         # Required because lerna uses tags to determine the version.
         with:
           fetch-depth: 0
 
-      - name: Setup node
-        uses: actions/setup-node@v3
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: ⬢ Set up Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: 🏷 Check git tags
         run: |
@@ -56,20 +61,14 @@ jobs:
     outputs:
       version: ${{ steps.get-version.outputs.value }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           # `fetch-depth`—number of commits to fetch. `0` fetches all history for all branches and tags.
           #  This is required because lerna uses tags to determine the version.
           fetch-depth: 0
 
-      - name: 🧶 Set up job
+      - name: Set up job
         uses: ./.github/actions/set-up-job
-
-      - name: ✅ Check constraints, dependencies, and package.json's
-        uses: ./tasks/check
-
-      - name: 🏗 Build
-        run: yarn build
 
       - name: 🔎 Lint
         run: yarn lint
@@ -95,7 +94,7 @@ jobs:
 
       - name: 🏷 Get version
         id: get-version
-        uses: sergeysova/jq-action@v2.3.0
+        uses: sergeysova/jq-action@a3f0d4ff59cc1dddf023fc0b325dd75b10deec58 # v2.3.0
         with:
           cmd: 'jq .version packages/core/package.json -r'
 
@@ -106,11 +105,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: 💬 Message Slack
         uses: ./.github/actions/message_slack_publishing
         with:
-          title: "🏎 RC Packages"
+          title: '🏎 RC Packages'
           status: ${{ needs.publish-release-candidate.result }}
           version: ${{ needs.publish-release-candidate.outputs.version }}
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_PACKAGE_PUBLISHING }}
