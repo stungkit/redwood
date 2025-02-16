@@ -13,6 +13,17 @@ export const emojiLog: Record<string, string> = {
   trace: '🧵',
 }
 
+export const ignoredCustomData: string[] = [
+  'time',
+  'pid',
+  'hostname',
+  'msg',
+  'res',
+  'req',
+  'reqId',
+  'responseTime',
+]
+
 export const isObject = (object?: Record<string, unknown>) => {
   return object && Object.prototype.toString.apply(object) === '[object Object]'
 }
@@ -36,9 +47,17 @@ export const formatBundleSize = (bundle: string) => {
 }
 
 export const formatCustom = (query?: Record<string, unknown>) => {
+  if (!query) {
+    return
+  }
+
+  ignoredCustomData.forEach((key) => {
+    delete query[key]
+  })
+
   if (!isEmptyObject(query)) {
     return chalk.white(
-      NEWLINE + '🗒 Custom' + NEWLINE + JSON.stringify(query, null, 2)
+      NEWLINE + '🗒 Custom' + NEWLINE + JSON.stringify(query, null, 2),
     )
   }
 
@@ -48,7 +67,7 @@ export const formatCustom = (query?: Record<string, unknown>) => {
 export const formatData = (data?: Record<string, unknown>) => {
   if (!isEmptyObject(data)) {
     return chalk.white(
-      NEWLINE + '📦 Result Data' + NEWLINE + JSON.stringify(data, null, 2)
+      NEWLINE + '📦 Result Data' + NEWLINE + JSON.stringify(data, null, 2),
     )
   }
 
@@ -78,7 +97,7 @@ export const formatErrorProp = (errorPropValue: Record<string, unknown>) => {
       NEWLINE +
       NEWLINE +
       JSON.stringify(errorPropValue, null, 2) +
-      NEWLINE
+      NEWLINE,
   )
 }
 
@@ -106,7 +125,8 @@ export const formatMessage = (logData: any) => {
     pretty = chalk.white(msg)
   }
   if (level === 'warn') {
-    pretty = chalk.magenta(msg)
+    const orange = '#ffa500'
+    pretty = chalk.hex(orange)(msg)
   }
   if (level === 'debug') {
     pretty = chalk.yellow(msg)
@@ -157,7 +177,7 @@ export const formatOperationName = (operationName: string) => {
 export const formatQuery = (query?: Record<string, unknown>) => {
   if (!isEmptyObject(query)) {
     return chalk.white(
-      NEWLINE + '🔭 Query' + NEWLINE + JSON.stringify(query, null, 2)
+      NEWLINE + '🔭 Query' + NEWLINE + JSON.stringify(query, null, 2),
     )
   }
 
@@ -165,14 +185,14 @@ export const formatQuery = (query?: Record<string, unknown>) => {
 }
 
 export const formatResponseCache = (
-  responseCache?: Record<string, unknown>
+  responseCache?: Record<string, unknown>,
 ) => {
   if (!isEmptyObject(responseCache)) {
     return chalk.white(
       NEWLINE +
         '💾 Response Cache' +
         NEWLINE +
-        JSON.stringify(responseCache, null, 2)
+        JSON.stringify(responseCache, null, 2),
     )
   }
 
@@ -188,14 +208,14 @@ export const formatStack = (stack?: string | Record<string, unknown>) => {
   return chalk.redBright(
     stack
       ? NEWLINE + '🥞 Error Stack' + NEWLINE + NEWLINE + stack + NEWLINE
-      : ''
+      : '',
   )
 }
 
 export const formatTracing = (data?: Record<string, unknown>) => {
   if (!isEmptyObject(data)) {
     return chalk.white(
-      NEWLINE + '⏰ Timing' + NEWLINE + JSON.stringify(data, null, 2)
+      NEWLINE + '⏰ Timing' + NEWLINE + JSON.stringify(data, null, 2),
     )
   }
 

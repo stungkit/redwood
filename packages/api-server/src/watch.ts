@@ -1,129 +1,71 @@
-#!/usr/bin/env node
-
-import { fork } from 'child_process'
-import type { ChildProcess } from 'child_process'
-import fs from 'fs'
 import path from 'path'
 
-import c from 'ansi-colors'
+import chalk from 'chalk'
 import chokidar from 'chokidar'
 import dotenv from 'dotenv'
-import { debounce } from 'lodash'
-import { hideBin } from 'yargs/helpers'
-import yargs from 'yargs/yargs'
 
-import { buildApi } from '@redwoodjs/internal/dist/build/api'
+import {
+  buildApi,
+  cleanApiBuild,
+  rebuildApi,
+} from '@redwoodjs/internal/dist/build/api'
 import { loadAndValidateSdls } from '@redwoodjs/internal/dist/validateSchema'
-import { getPaths, ensurePosixPath, getConfig } from '@redwoodjs/project-config'
+import { ensurePosixPath, getPaths } from '@redwoodjs/project-config'
 
-const argv = yargs(hideBin(process.argv))
-  .option('debug-port', {
-    alias: 'dp',
-    description: 'Debugging port',
-    type: 'number',
-  })
-  .option('port', {
-    alias: 'p',
-    description: 'Port',
-    type: 'number',
-  })
-  .help()
-  .alias('help', 'h')
-  .parseSync()
+import type { BuildAndRestartOptions } from './buildManager'
+import { BuildManager } from './buildManager'
+import { serverManager } from './serverManager'
 
 const rwjsPaths = getPaths()
 
-dotenv.config({
-  path: rwjsPaths.base,
-})
+if (!process.env.REDWOOD_ENV_FILES_LOADED) {
+  dotenv.config({
+    path: path.join(rwjsPaths.base, '.env'),
+    // @ts-expect-error The types for dotenv-defaults are using an outdated version of dotenv
+    defaults: path.join(rwjsPaths.base, '.env.defaults'),
+    multiline: true,
+  })
 
-// TODO:
-// 1. Move this file out of the HTTP server, and place it in the CLI?
-
-let httpServerProcess: ChildProcess
-
-const killApiServer = () => {
-  httpServerProcess?.emit('exit')
-  httpServerProcess?.kill()
+  process.env.REDWOOD_ENV_FILES_LOADED = 'true'
 }
 
-const validate = async () => {
+async function buildAndServe(options: BuildAndRestartOptions) {
+  const buildTs = Date.now()
+  console.log(chalk.dim.italic('Building...'))
+
+  if (options.clean) {
+    await cleanApiBuild()
+  }
+
+  if (options.rebuild) {
+    await rebuildApi()
+  } else {
+    await buildApi()
+  }
+
+  await serverManager.restartApiServer()
+
+  console.log(chalk.dim.italic('Took ' + (Date.now() - buildTs) + ' ms'))
+}
+
+const buildManager = new BuildManager(buildAndServe)
+
+async function validateSdls() {
   try {
     await loadAndValidateSdls()
     return true
   } catch (e: any) {
-    killApiServer()
-    console.log(c.redBright(`[GQL Server Error] - Schema validation failed`))
-    console.error(c.red(e?.message))
-    console.log(c.redBright('-'.repeat(40)))
+    serverManager.killApiServer()
+    console.error(
+      chalk.redBright(`[GQL Server Error] - Schema validation failed`),
+    )
+    console.error(chalk.red(e?.message))
+    console.error(chalk.redBright('-'.repeat(40)))
 
-    delayRestartServer.cancel()
+    buildManager.cancelScheduledBuild()
     return false
   }
 }
-
-const rebuildApiServer = () => {
-  try {
-    // Shutdown API server
-    killApiServer()
-
-    const buildTs = Date.now()
-    process.stdout.write(c.dim(c.italic('Building... ')))
-    buildApi()
-    console.log(c.dim(c.italic('Took ' + (Date.now() - buildTs) + ' ms')))
-
-    const forkOpts = {
-      execArgv: process.execArgv,
-    }
-
-    // OpenTelemetry SDK Setup
-    if (getConfig().experimental.opentelemetry.enabled) {
-      const opentelemetrySDKScriptPath =
-        getConfig().experimental.opentelemetry.apiSdk
-      if (opentelemetrySDKScriptPath) {
-        console.log(
-          `Setting up OpenTelemetry using the setup file: ${opentelemetrySDKScriptPath}`
-        )
-        if (fs.existsSync(opentelemetrySDKScriptPath)) {
-          forkOpts.execArgv = forkOpts.execArgv.concat([
-            `--require=${opentelemetrySDKScriptPath}`,
-          ])
-        } else {
-          console.error(
-            `OpenTelemetry setup file does not exist at ${opentelemetrySDKScriptPath}`
-          )
-        }
-      }
-    }
-
-    const debugPort = argv['debug-port']
-    if (debugPort) {
-      forkOpts.execArgv = forkOpts.execArgv.concat([`--inspect=${debugPort}`])
-    }
-
-    const port = argv.port ?? getConfig().api.port
-
-    // Start API server
-    httpServerProcess = fork(
-      path.join(__dirname, 'index.js'),
-      ['api', '--port', port.toString()],
-      forkOpts
-    )
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-// We want to delay exception when multiple files are modified on the filesystem,
-// this usually happens when running RedwoodJS generator commands.
-// Local writes are very fast, but writes in e2e environments are not,
-// so allow the default to be adjust with a env-var.
-const delayRestartServer = debounce(
-  rebuildApiServer,
-  process.env.RWJS_DELAY_RESTART
-    ? parseInt(process.env.RWJS_DELAY_RESTART, 10)
-    : 5
-)
 
 // NOTE: the file comes through as a unix path, even on windows
 // So we need to convert the rwjsPaths
@@ -135,7 +77,7 @@ const IGNORED_API_PATHS = [
 ].map((path) => ensurePosixPath(path))
 
 chokidar
-  .watch(rwjsPaths.api.base, {
+  .watch([rwjsPaths.api.src], {
     persistent: true,
     ignoreInitial: true,
     ignored: (file: string) => {
@@ -158,24 +100,41 @@ chokidar
     },
   })
   .on('ready', async () => {
-    rebuildApiServer()
-    await validate()
+    // First time
+    await buildManager.run({ clean: true, rebuild: false })
+    await validateSdls()
   })
   .on('all', async (eventName, filePath) => {
-    // We validate here, so that developers will see the error
-    // As they're running the dev server
-    if (filePath.includes('.sdl')) {
-      const isValid = await validate()
+    // On sufficiently large projects (500+ files, or >= 2000 ms build times) on older machines,
+    // esbuild writing to the api directory makes chokidar emit an `addDir` event.
+    // This starts an infinite loop where the api starts building itself as soon as it's finished.
+    // This could probably be fixed with some sort of build caching
+    if (eventName === 'addDir' && filePath === rwjsPaths.api.base) {
+      return
+    }
 
-      // Exit early if not valid
-      if (!isValid) {
-        return
+    if (eventName) {
+      if (filePath.includes('.sdl')) {
+        // We validate here, so that developers will see the error
+        // As they're running the dev server
+        const isValid = await validateSdls()
+
+        // Exit early if not valid
+        if (!isValid) {
+          return
+        }
       }
     }
 
     console.log(
-      c.dim(`[${eventName}] ${filePath.replace(rwjsPaths.api.base, '')}`)
+      chalk.dim(`[${eventName}] ${filePath.replace(rwjsPaths.api.base, '')}`),
     )
-    delayRestartServer.cancel()
-    delayRestartServer()
+
+    buildManager.cancelScheduledBuild()
+    if (eventName === 'add' || eventName === 'unlink') {
+      await buildManager.run({ rebuild: false })
+    } else {
+      // If files have just changed, then rebuild
+      await buildManager.run({ rebuild: true })
+    }
   })

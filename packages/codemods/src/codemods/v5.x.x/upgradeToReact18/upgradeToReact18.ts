@@ -5,10 +5,10 @@ import { load } from 'cheerio'
 import execa from 'execa'
 import type { TaskInnerAPI } from 'tasuku'
 
-import getRWPaths from '../../../lib/getRWPaths'
+import { getPaths } from '@redwoodjs/project-config'
 
 function checkAndTransformReactRoot(taskContext: TaskInnerAPI) {
-  const indexHTMLFilepath = path.join(getRWPaths().web.src, 'index.html')
+  const indexHTMLFilepath = path.join(getPaths().web.src, 'index.html')
 
   const indexHTML = load(fs.readFileSync(indexHTMLFilepath, 'utf-8'))
 
@@ -20,7 +20,7 @@ function checkAndTransformReactRoot(taskContext: TaskInnerAPI) {
 
     if (!reactRootHTML) {
       throw new Error(
-        `Couldn't get HTML in react root (div with id="redwood-app")`
+        `Couldn't get HTML in react root (div with id="redwood-app")`,
       )
     }
 
@@ -39,7 +39,7 @@ function checkAndTransformReactRoot(taskContext: TaskInnerAPI) {
         '',
         'React expects to control this DOM node completely. This codemod has moved the children outside the react root,',
         'but consider moving them into a layout.',
-      ].join('\n')
+      ].join('\n'),
     )
   }
 
@@ -50,15 +50,15 @@ function checkAndTransformReactRoot(taskContext: TaskInnerAPI) {
 }
 
 async function upgradeReactDepsTo18() {
-  const redwoodProjectPaths = getRWPaths()
+  const redwoodProjectPaths = getPaths()
 
   const webPackageJSONPath = path.join(
     redwoodProjectPaths.web.base,
-    'package.json'
+    'package.json',
   )
 
   const webPackageJSON = JSON.parse(
-    fs.readFileSync(webPackageJSONPath, 'utf-8')
+    fs.readFileSync(webPackageJSONPath, 'utf-8'),
   )
 
   const latestReactVersion = '18.2.0'
@@ -66,7 +66,7 @@ async function upgradeReactDepsTo18() {
   for (const requiredReactDep of ['react', 'react-dom']) {
     if (!Object.hasOwn(webPackageJSON.dependencies, requiredReactDep)) {
       throw new Error(
-        `Couldn't find ${requiredReactDep} in web/package.json dependencies`
+        `Couldn't find ${requiredReactDep} in web/package.json dependencies`,
       )
     }
 
@@ -82,7 +82,7 @@ async function upgradeReactDepsTo18() {
 
 async function checkAndUpdateCustomWebIndex(taskContext: TaskInnerAPI) {
   // First check if the custom web index exists. If it doesn't, this is a no-op.
-  const redwoodProjectPaths = getRWPaths()
+  const redwoodProjectPaths = getPaths()
 
   const bundlerToCustomWebIndex = {
     vite: path.join(redwoodProjectPaths.web.src, 'entry-client.jsx'),
@@ -90,7 +90,7 @@ async function checkAndUpdateCustomWebIndex(taskContext: TaskInnerAPI) {
   }
 
   const customWebIndexFound = Object.entries(bundlerToCustomWebIndex).find(
-    ([, filepath]) => fs.existsSync(filepath)
+    ([, filepath]) => fs.existsSync(filepath),
   )
 
   if (!customWebIndexFound) {
@@ -103,7 +103,7 @@ async function checkAndUpdateCustomWebIndex(taskContext: TaskInnerAPI) {
     [
       `We updated the custom web index for you at ${customWebIndexFound[1]}.`,
       "  If you made manual changes to this file, you'll have to copy them over manually from the diff.",
-    ].join('\n')
+    ].join('\n'),
   )
 }
 
